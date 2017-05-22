@@ -1,0 +1,56 @@
+Advanced Databases Project 3 - LRU implementation on Buffer Reader
+------------------------------------------------------------------
+RAGHUNATH BAHUNUTHULA - U77233921
+------------------------------------------------------------------
+
+CLOCKSWEEP INFO:
+----------------
+
+1. Postgres 8.2.19 employs clock sweep algorithm in its buffer reader using two parameters usage_count which serves as reference bit and refcount that keeps note of the active threads referring to the buffer.
+
+2. usage_count - reference bit for clocksweeping
+
+3. refcount - Number of active threads towards the buffer
+
+
+CLOCKSWEEP TO Least Recently Used (LRU):
+----------------------------------------
+
+1. LRU follows FIFO. So, we can use queue data structure containing buffers.
+
+2. LRU needs refcount variable to track which buffer is least used recently.
+
+3. A buffer can be used for replacement by LRU when its refcount is 0.
+
+4. Everytime a replacement takes place, we just need to find the head of the freelist at that instance as it is the one that gets replaced.
+
+5. On every buffer release, it is added to tail of freelist in UnpinBuffer() while calling the StrategyFreeBuffer(). 
+
+
+IMPLEMENTATION OF LRU :
+-----------------------
+The following files were edited to implement LRU:
+
+1. freelist.c --> Edited the functions StrategyFreeBuffer & StrategyGetBuffer
+2. localbuf.c --> usage_count made as a comment
+3. bufmgr.c   --> usage_count made as a comment
+	      --> UnpinBuffer() to pass false to StrategyFreeBuffer for tail addition.
+4. buf_init.c --> usage_count made as a comment
+
+For representation /* LRU Change (RaghunathB) */ is mentioned at every changed line.
+
+The following changes were made in the functions mentioned below:
+
+1. StrategyGetBuffer() --> To select LRU page from the freelist using refcount.
+                       --> "elog(LOG, "Get buf %d\n", buf->buf_id);" to track of retrieved/replaced buffers
+
+2. StrategyFreeBuffer()--> To Add a free buffer at the end of the freelist.
+                       --> "elog(LOG, "Add buf %d\n", buf->buf_id);" to keep track of buffers added at the tail.
+
+3. UnpinBuffer()       --> Always pass false as the parameter to StrategyFreeBuffer so that the unpinned buffer is added at the end of the freelist.
+
+Upon compiltaion of the edited code, the execution was tested using the command below:  
+postgres -N 50 -B 100 -D /usr/local/pgsql/data > logfile 2>&1 &
+
+When a sql file is executed, the log data generated will be written to the log file.
+
